@@ -1,7 +1,9 @@
-from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404, redirect
-from .models import Restaurante, ItemCardapio
+from django.views.decorators.csrf import csrf_exempt
+from django.http import HttpResponse
+from .models import Restaurante, ItemCardapio, Pedido
 from . import use_cases
+import json
 
 # A URL terá o id do restaurante e o número da mesa, ex: /cardapio/1/mesa/3/
 # get_object_or_404 vai retornar erro 404 automaticamente se o restaurante não existir.
@@ -45,9 +47,61 @@ def confirmar_pedido(request, restaurante_id, mesa):
     pedido = use_cases.criar_pedido(carrinho, restaurante, mesa)
     request.session['carrinho'] = {}
 
+    url_pagamento = use_cases.gerar_pagamento(pedido, request)
+    return redirect(url_pagamento)
+
+def pagamento_sucesso(request):
+
+    pedido_id = requet.GET.get('external reference')
+    pedido = get_object_or_404(Pedido, pk=pedido_id)
+
     return render(request, 'cardapio/pedido_confirmado.html', {
         'pedido': pedido,
         'mesa': mesa,
         'restaurante_id': restaurante_id,
     })
 
+def pagamento_falha(request):
+    return render(request, 'cardapio/pagamento_falha.html')
+
+
+def pagamento_pendente(request):
+    return render(request, 'cardapio/pagamento_pendente.html')
+
+
+@csrf_exempt  # desativa proteção CSRF pois o Mercado Pago não envia o token
+def webhook_pagamento(request):
+    if request.method != 'POST':
+        return HttpResponse(status=405)
+
+    try:
+        data = json.loads(request.body)
+
+        # O Mercado Pago envia tipo 'payment' quando um pagamento é processado
+        if data.get('type') == 'payment':
+            import mercadopago
+            import os
+
+            sdk = mercadopago.SDK(os.getenv('MP_ACCESS_TOKEN'))
+            payment_id = data['data']['id']
+
+            # Busca os detalhes do pagamento na API do Mercado Pago
+            payment = sdk.payment().get(payment_id)
+            payment_data = payment['response']
+
+            pedido_id = payment_data.get('external_reference')
+            status_mp = payment_data.get('status')
+
+            pedido = Pedido.objects.get(pk=pedido_id)
+
+            if status_mp == 'approved':
+                pedido.status = Pedido.Status.PAGO
+            elif status_mp in ['rejected', 'cancelled']:
+                pedido.status = Pedido.Status.AGUARDANDO_PAGAMENTO
+
+            pedido.save()
+
+    except Exception:
+        pass
+
+    return HttpResponse(status=200)

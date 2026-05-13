@@ -14,4 +14,10 @@ urlpatterns = [
     path('<int:restaurante_id>/mesa/<int:mesa>/confirmar/',
          view.confirmar_pedido, name='confirmar_pedido'),
 
+    path('pagamento/sucesso/', view.pagamento_sucesso, name='pagamento_sucesso'),
+    path('pagamento/falha/', view.pagamento_falha, name='pagamento_falha'),
+    path('pagamento/pendente/', view.pagamento_pendente, name='pagamento_pendente'),
+
+    path('pagamento/webhook/',  view.webhook_pagamento,  name='webhook_pagamento'),
+
 ]

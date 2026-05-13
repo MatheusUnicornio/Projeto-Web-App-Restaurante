@@ -1,4 +1,6 @@
-#Lógica do Carrinho
+from django.db import models
+
+#LÓGICA DO CARRINHO
 def adicionar_item(carrinho: dict, item_id: int, nome: str, preco: float) -> dict:
     chave = str(item_id)
 
@@ -51,3 +53,40 @@ def criar_pedido(carrinho: dict, restaurante, mesa: int):
         )
 
     return pedido
+
+#LÓGICA DE PAGAMENTO
+def gerar_pagamento(pedido, request) -> str:
+    import mercadopago
+    import os
+
+    sdk = mercadopago.SDK(os.getenv('MP_ACCESS_TOKEN'))
+
+    base_url = request.build_absolute_uri('/').rstrip('/')
+
+    items = []
+    for item_pedido in pedido.itens.all():
+        items.append({
+            'title': item_pedido.item_cardapio.nome,
+            'quantity': item_pedido.quantidade,
+            'unit_price': float(item_pedido.preco_unitario),
+            'currency_id': 'BRL',
+        })
+
+    preference_data = {
+        'items': items,
+        'external_reference': str(pedido.id),
+        'back_urls': {
+            # URLs para onde o cliente é redirecionado após o pagamento
+            'success': f'{base_url}/cardapio/pagamento/sucesso/',
+            'failure': f'{base_url}/cardapio/pagamento/falha/',
+            'pending': f'{base_url}/cardapio/pagamento/pendente/',
+        },
+        'auto_return': 'approved',
+        # URL que o Mercado Pago chama para notificar o pagamento
+        'notification_url': f'{base_url}/cardapio/pagamento/webhook/',
+    }
+
+    result = sdk.preference().create(preference_data)
+    preference = result['response']
+
+    return preference['sandbox_init_point']
