@@ -1,5 +1,6 @@
 from django.http import HttpResponse
 from django.shortcuts import render, get_object_or_404
+from .models import Restaurante, ItemCardapio
 
 # A URL terá o id do restaurante e o número da mesa, ex: /cardapio/1/mesa/3/
 # get_object_or_404 vai retornar erro 404 automaticamente se o restaurante não existir.
