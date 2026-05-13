@@ -29,8 +29,8 @@ def remover_item(carrinho: dict, item_id: int) -> dict:
 
 
 def calcular_total(carrinho: dict) -> float:
-   return sum(item['preco'] * item['quantidade'] for item in carrinho.values())
-
+   total = sum(item['preco'] * item['quantidade'] for item in carrinho.values())
+   return round(total, 2)
 
 def criar_pedido(carrinho: dict, restaurante, mesa: int):
     from .models import Pedido, ItemPedido, ItemCardapio
