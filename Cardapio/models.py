@@ -44,3 +44,6 @@ class ItemPedido(models.Model):
 
     def subtotal(self):
         return self.quantidade * self.preco_unitario
+
+    def __str__(self):
+        return f"{self.quantidade}x {self.item_cardapio.nome}"
