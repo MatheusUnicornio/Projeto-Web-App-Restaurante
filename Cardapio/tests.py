@@ -1,9 +1,10 @@
-from django.test import TestCase
+from django.test import TestCase, Client
 from unittest.mock import patch, MagicMock
 from . import use_cases
 from .models import Restaurante, Pedido, ItemCardapio, ItemPedido
 from django.contrib.admin.sites import AdminSite
 from .admin import PedidoAdmin
+from django.urls import reverse
 
 # Create your tests here.
 #
@@ -252,5 +253,155 @@ class AcoesEmLoteIntegracaoTestCase(TestCase):
         self.assertEqual(pedido_em_preparo.status, Pedido.Status.PRONTO)
         self.assertEqual(pedido_pago.status, Pedido.Status.PAGO)
 
+#
+#
+#Adendo: Testes de integração - Cardápio
+#
+#
+
+class CardapioViewIntegracaoTestCase(TestCase):
+
+    def setUp(self):
+        #Cria os dados necessários para cada teste
+        self.client = Client()
+        self.restaurante = Restaurante.objects.create(nome='Restaurante Teste', ativo=True)
+        self.item = ItemCardapio.objects.create(
+            restaurante=self.restaurante,
+            nome='Pizza',
+            preco=45.90,
+            disponivel=True,
+        )
+
+    def test_cardapio_retorna_200(self):
+        url = reverse('cardapio', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1
+        })
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+
+    def test_cardapio_exibe_itens_do_restaurante(self):
+        url = reverse('cardapio', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1
+        })
+        response = self.client.get(url)
+        self.assertContains(response, 'Pizza')
+
+    def test_cardapio_nao_exibe_itens_de_outro_restaurante(self):
+
+        outro_restaurante = Restaurante.objects.create(nome='Outro Restaurante', ativo=True)
+        ItemCardapio.objects.create(
+            restaurante=outro_restaurante,
+            nome='Hamburguer',
+            preco=35.00,
+            disponivel=True,
+        )
+
+        url = reverse('cardapio', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1
+        })
+        response = self.client.get(url)
+
+        self.assertContains(response, 'Pizza')
+        self.assertNotContains(response, 'Hamburguer')
+
+    def test_restaurante_inativo_retorna_404(self):
+        self.restaurante.ativo = False
+        self.restaurante.save()
+
+        url = reverse('cardapio', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1
+        })
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, 404)
+
+
+class CarrinhoIntegracaoTestCase(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.restaurante = Restaurante.objects.create(nome='Restaurante Teste', ativo=True)
+        self.item = ItemCardapio.objects.create(
+            restaurante=self.restaurante,
+            nome='Pizza',
+            preco=45.90,
+            disponivel=True,
+        )
+
+    def test_adicionar_item_salva_na_sessao(self):
+        url = reverse('adicionar_ao_carrinho', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1,
+            'item_id': self.item.id,
+        })
+        self.client.get(url)
+
+        carrinho = self.client.session.get('carrinho', {})
+        self.assertIn(str(self.item.id), carrinho)
+        self.assertEqual(carrinho[str(self.item.id)]['quantidade'], 1)
+
+    def test_adicionar_mesmo_item_duas_vezes_incrementa_quantidade(self):
+        url = reverse('adicionar_ao_carrinho', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1,
+            'item_id': self.item.id,
+        })
+        self.client.get(url)
+        self.client.get(url)
+
+        carrinho = self.client.session.get('carrinho', {})
+        self.assertEqual(carrinho[str(self.item.id)]['quantidade'], 2)
+
+    def test_confirmar_pedido_cria_pedido_no_banco(self):
+        self.client.get(reverse('adicionar_ao_carrinho', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1,
+            'item_id': self.item.id,
+        }))
+
+        with patch('Cardapio.use_cases.gerar_pagamento', return_value='http://fake-mp.com'):
+            self.client.get(reverse('confirmar_pedido', kwargs={
+                'restaurante_id': self.restaurante.id,
+                'mesa': 1,
+            }))
+
+        self.assertEqual(Pedido.objects.count(), 1)
+        pedido = Pedido.objects.first()
+        self.assertEqual(pedido.mesa, 1)
+        self.assertEqual(pedido.restaurante, self.restaurante)
+
+        self.assertEqual(ItemPedido.objects.count(), 1)
+        item_pedido = ItemPedido.objects.first()
+        self.assertEqual(item_pedido.quantidade, 1)
+        self.assertEqual(float(item_pedido.preco_unitario), 45.90)
+
+    def test_confirmar_pedido_limpa_carrinho(self):
+        self.client.get(reverse('adicionar_ao_carrinho', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1,
+            'item_id': self.item.id,
+        }))
+
+        with patch('Cardapio.use_cases.gerar_pagamento', return_value='http://fake-mp.com'):
+            self.client.get(reverse('confirmar_pedido', kwargs={
+                'restaurante_id': self.restaurante.id,
+                'mesa': 1,
+            }))
+
+        carrinho = self.client.session.get('carrinho', {})
+        self.assertEqual(carrinho, {})
+
+    def test_confirmar_pedido_vazio_redireciona_para_cardapio(self):
+        url = reverse('confirmar_pedido', kwargs={
+            'restaurante_id': self.restaurante.id,
+            'mesa': 1,
+        })
+        response = self.client.get(url)
+
+        # Deve redirecionar de volta para o cardápio
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('cardapio', response.url)
 
 

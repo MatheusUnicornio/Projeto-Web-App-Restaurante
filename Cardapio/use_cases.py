@@ -91,6 +91,6 @@ def gerar_pagamento(pedido, request) -> str:
     preference = result['response']
 
     #DEBUG
-    print('RESPOSTA MERCADO PAGO:', result)
+    #print('RESPOSTA MERCADO PAGO:', result)
 
     return preference.get('sandbox_init_point') or preference.get('init_point')
