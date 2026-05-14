@@ -1,0 +1,61 @@
+body {
+    font-size: 16px;
+}
+
+/* Tabela de pedidos adaptada para tela pequena */
+#result_list {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#result_list th,
+#result_list td {
+    padding: 12px 8px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.status-pago {
+    background-color: #fff3cd;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #856404;
+}
+
+.status-preparo {
+    background-color: #cce5ff;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #004085;
+}
+
+.status-pronto {
+    background-color: #d4edda;
+    font-weight: bold;
+    padding: 4px 8px;
+    border-radius: 4px;
+    color: #155724;
+}
+
+.timer {
+    font-weight: bold;
+    color: #155724;
+}
+
+.timer.urgente {
+    color: #dc3545;
+    animation: piscar 1s infinite;
+}
+
+@keyframes piscar {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.4; }
+}
+
+.button, input[type=submit], a.button {
+    min-height: 44px;
+    min-width: 44px;
+    font-size: 16px;
+}

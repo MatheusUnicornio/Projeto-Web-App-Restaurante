@@ -200,7 +200,7 @@ class ProximaAcaoUnitarioTestCase(TestCase):
 
 #Teste de Integração
 class AcoesEmLoteIntegracaoTestCase(TestCase):
-    #Testa as ações em lote do admin que tocam o banco de dados.
+    #Testa as ações em lote do cardapio que tocam o banco de dados.
     def setUp(self):
         self.site = AdminSite()
         self.admin = PedidoAdmin(Pedido, self.site)
