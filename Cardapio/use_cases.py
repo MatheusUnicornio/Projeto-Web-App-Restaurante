@@ -59,6 +59,10 @@ def gerar_pagamento(pedido, request) -> str:
     import mercadopago
     import os
 
+    #DEBUG
+    #token = os.getenv('MP_ACCESS_TOKEN')
+    #print('TOKEN LIDO:', token)
+
     sdk = mercadopago.SDK(os.getenv('MP_ACCESS_TOKEN'))
 
     base_url = request.build_absolute_uri('/').rstrip('/')
@@ -81,12 +85,12 @@ def gerar_pagamento(pedido, request) -> str:
             'failure': f'{base_url}/cardapio/pagamento/falha/',
             'pending': f'{base_url}/cardapio/pagamento/pendente/',
         },
-        'auto_return': 'approved',
-        # URL que o Mercado Pago chama para notificar o pagamento
-        'notification_url': f'{base_url}/cardapio/pagamento/webhook/',
     }
 
     result = sdk.preference().create(preference_data)
     preference = result['response']
 
-    return preference['sandbox_init_point']
+    #DEBUG
+    print('RESPOSTA MERCADO PAGO:', result)
+
+    return preference.get('sandbox_init_point') or preference.get('init_point')

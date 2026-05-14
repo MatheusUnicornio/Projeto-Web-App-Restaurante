@@ -51,14 +51,19 @@ def confirmar_pedido(request, restaurante_id, mesa):
     return redirect(url_pagamento)
 
 def pagamento_sucesso(request):
-
-    pedido_id = requet.GET.get('external reference')
+    #print('GET PARAMS:', request.GET)
+    #print('GET DICT:', dict(request.GET))
+    pedido_id = dict(request.GET).get('external_reference', [None])[0]
+    #print('PEDIDO ID RECEBIDO:', pedido_id)
+    #print('TIPO:', type(pedido_id))
     pedido = get_object_or_404(Pedido, pk=pedido_id)
+    pedido.status = Pedido.Status.PAGO
+    pedido.save()
 
     return render(request, 'cardapio/pedido_confirmado.html', {
         'pedido': pedido,
-        'mesa': mesa,
-        'restaurante_id': restaurante_id,
+        'mesa': pedido.mesa,
+        'restaurante_id': pedido.restaurante_id,
     })
 
 def pagamento_falha(request):
