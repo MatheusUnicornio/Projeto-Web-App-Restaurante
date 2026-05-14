@@ -4,6 +4,7 @@ from django.http import HttpResponse
 from .models import Restaurante, ItemCardapio, Pedido
 from . import use_cases
 import json
+from django.http import JsonResponse
 
 # A URL terá o id do restaurante e o número da mesa, ex: /cardapio/1/mesa/3/
 # get_object_or_404 vai retornar erro 404 automaticamente se o restaurante não existir.
@@ -110,3 +111,28 @@ def webhook_pagamento(request):
         pass
 
     return HttpResponse(status=200)
+
+#
+#
+#IMPLEMENTAÇÃO CHAT IA
+#
+#
+@csrf_exempt
+def chatbot(request, restaurante_id):
+    if request.method != 'POST':
+        return JsonResponse({'erro': 'Método não permitido'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        mensagem = data.get('mensagem', '').strip()
+
+        if not mensagem:
+            return JsonResponse({'erro': 'Mensagem vazia'}, status=400)
+
+        restaurante = get_object_or_404(Restaurante, pk=restaurante_id, ativo=True)
+        resposta = use_cases.responder_chatbot(mensagem, restaurante)
+
+        return JsonResponse({'resposta': resposta})
+
+    except Exception as e:
+        return JsonResponse({'erro': str(e)}, status=500)

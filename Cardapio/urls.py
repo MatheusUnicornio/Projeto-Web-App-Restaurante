@@ -20,4 +20,5 @@ urlpatterns = [
 
     path('pagamento/webhook/',  view.webhook_pagamento,  name='webhook_pagamento'),
 
+    path('<int:restaurante_id>/chat/', view.chatbot, name='chatbot'),
 ]

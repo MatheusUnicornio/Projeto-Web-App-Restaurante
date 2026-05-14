@@ -2,7 +2,8 @@ from django.db import models
 import mercadopago
 import os
 from .models import Pedido, ItemPedido, ItemCardapio
-
+from groq import Groq
+from .models import ItemCardapio
 
 #LÓGICA DO CARRINHO
 def adicionar_item(carrinho: dict, item_id: int, nome: str, preco: float) -> dict:
@@ -88,3 +89,43 @@ def gerar_pagamento(pedido, request) -> str:
     result = sdk.preference().create(preference_data)
     preference = result['response']
     return preference.get('sandbox_init_point') or preference.get('init_point')
+#
+#
+#LÓGICA IMPLEMENTAÇÃO DA IA
+#
+#
+def responder_chatbot(mensagem: str, restaurante) -> str:
+    client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+
+    itens = ItemCardapio.objects.filter(restaurante=restaurante, disponivel=True)
+
+    cardapio_texto = '\n'.join([
+        f"- {item.nome}: R${item.preco} | {item.descricao} | Restrições: {item.restricoes or 'nenhuma'}"
+        for item in itens
+    ])
+
+    system_prompt = f"""Você é um assistente simpático do restaurante {restaurante.nome}.
+    Seu papel é ajudar os clientes com dúvidas sobre o cardápio, fazer recomendações
+    e responder perguntas sobre os pratos. Seja conciso e amigável.
+
+    Cardápio atual:
+    {cardapio_texto}
+
+    Regras:
+    - Responda sempre em português
+    - Seja breve — máximo 3 frases por resposta
+    - Se perguntarem algo fora do cardápio, redirecione gentilmente para os pratos
+    - Não invente pratos ou preços que não estão no cardápio acima
+    """
+
+    response = client.chat.completions.create(
+        model='llama-3.1-8b-instant',
+        messages=[
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': mensagem},
+        ],
+        max_tokens=200,
+        temperature=0.7,
+    )
+
+    return response.choices[0].message.content
