@@ -2,7 +2,8 @@ from django.test import TestCase
 from unittest.mock import patch, MagicMock
 from . import use_cases
 from .models import Restaurante, Pedido, ItemCardapio, ItemPedido
-
+from django.contrib.admin.sites import AdminSite
+from .admin import PedidoAdmin
 
 # Create your tests here.
 #
@@ -145,3 +146,111 @@ class GerarPagamentoTestCase(TestCase):
         args = mock_instance.preference().create.call_args[0][0]
 
         self.assertEqual(args['external_reference'], str(self.pedido.id))
+
+#
+#
+# TESTES - FUNCIONALIDADES PAINEL DO ADMIN
+#
+#
+
+#Teste unitário
+class ProximaAcaoUnitarioTestCase(TestCase):
+    #Testa a função proxima_acao do PedidoAdmin
+
+    def setUp(self):
+        self.site = AdminSite()
+        self.admin = PedidoAdmin(Pedido, self.site)
+        self.restaurante = Restaurante.objects.create(nome='Restaurante Teste')
+
+    def test_proxima_acao_aguardando_pagamento(self):
+        pedido = Pedido(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.AGUARDANDO_PAGAMENTO
+        )
+        resultado = self.admin.proxima_acao(pedido)
+        self.assertIn('Aguardando pagamento', resultado)
+
+    def test_proxima_acao_pago(self):
+        pedido = Pedido(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.PAGO
+        )
+        resultado = self.admin.proxima_acao(pedido)
+        self.assertIn('Iniciar preparo', resultado)
+
+    def test_proxima_acao_em_preparo(self):
+        pedido = Pedido(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.EM_PREPARO
+        )
+        resultado = self.admin.proxima_acao(pedido)
+        self.assertIn('Marcar como pronto', resultado)
+
+    def test_proxima_acao_pronto(self):
+        pedido = Pedido(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.PRONTO
+        )
+        resultado = self.admin.proxima_acao(pedido)
+        self.assertIn('Entregar na mesa', resultado)
+
+#Teste de Integração
+class AcoesEmLoteIntegracaoTestCase(TestCase):
+    #Testa as ações em lote do admin que tocam o banco de dados.
+    def setUp(self):
+        self.site = AdminSite()
+        self.admin = PedidoAdmin(Pedido, self.site)
+        self.restaurante = Restaurante.objects.create(nome='Restaurante Teste')
+
+    def test_marcar_em_preparo_atualiza_apenas_pedidos_pagos(self):
+       pedido_pago = Pedido.objects.create(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.PAGO
+        )
+       pedido_aguardando = Pedido.objects.create(
+            restaurante=self.restaurante,
+            mesa=2,
+            status=Pedido.Status.AGUARDANDO_PAGAMENTO
+        )
+
+       queryset = Pedido.objects.filter(
+            pk__in=[pedido_pago.pk, pedido_aguardando.pk]
+        )
+       self.admin.marcar_em_preparo(None, queryset)
+
+       pedido_pago.refresh_from_db()
+       pedido_aguardando.refresh_from_db()
+
+       self.assertEqual(pedido_pago.status, Pedido.Status.EM_PREPARO)
+       self.assertEqual(pedido_aguardando.status, Pedido.Status.AGUARDANDO_PAGAMENTO)
+
+    def test_marcar_pronto_atualiza_apenas_pedidos_em_preparo(self):
+        pedido_em_preparo = Pedido.objects.create(
+            restaurante=self.restaurante,
+            mesa=1,
+            status=Pedido.Status.EM_PREPARO
+        )
+        pedido_pago = Pedido.objects.create(
+            restaurante=self.restaurante,
+            mesa=2,
+            status=Pedido.Status.PAGO
+        )
+
+        queryset = Pedido.objects.filter(
+            pk__in=[pedido_em_preparo.pk, pedido_pago.pk]
+        )
+        self.admin.marcar_pronto(None, queryset)
+
+        pedido_em_preparo.refresh_from_db()
+        pedido_pago.refresh_from_db()
+
+        self.assertEqual(pedido_em_preparo.status, Pedido.Status.PRONTO)
+        self.assertEqual(pedido_pago.status, Pedido.Status.PAGO)
+
+
+
