@@ -49,11 +49,13 @@
 
             if (!celula) {
                 clearInterval(timers[pedidoId]);
+                delete timers[pedidoId];
                 return;
             }
 
             if (segundos <= 0) {
                 clearInterval(timers[pedidoId]);
+                delete timers[pedidoId];
                 celula.textContent = '';
                 celula.className = '';
                 return;
@@ -104,7 +106,9 @@
                     linha.querySelector('.celula-status').innerHTML = badgeStatus(pedido.status);
                     linha.querySelector('.celula-acao').innerHTML = montarProximaAcao(pedido);
 
-                    if (pedido.segundos_restantes !== null && !timers[pedido.id]) {
+                    if (pedido.segundos_restantes !== null
+                        && pedido.segundos_restantes > 0
+                        && !timers[pedido.id]) {
                         const celulaTimer = document.getElementById(`timer-${pedido.id}`);
                         if (celulaTimer) {
                             celulaTimer.textContent = `⏱ ${formatarTempo(Math.floor(pedido.segundos_restantes))}`;

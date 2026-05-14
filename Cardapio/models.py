@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 
 #Camada de Domínio
 class Restaurante(models.Model):

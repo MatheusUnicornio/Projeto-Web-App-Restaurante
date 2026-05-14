@@ -1,4 +1,8 @@
 from django.db import models
+import mercadopago
+import os
+from .models import Pedido, ItemPedido, ItemCardapio
+
 
 #LÓGICA DO CARRINHO
 def adicionar_item(carrinho: dict, item_id: int, nome: str, preco: float) -> dict:
@@ -35,8 +39,6 @@ def calcular_total(carrinho: dict) -> float:
    return round(total, 2)
 
 def criar_pedido(carrinho: dict, restaurante, mesa: int):
-    from .models import Pedido, ItemPedido, ItemCardapio
-
     pedido = Pedido.objects.create(
         restaurante=restaurante,
         mesa=mesa,
@@ -55,18 +57,7 @@ def criar_pedido(carrinho: dict, restaurante, mesa: int):
     return pedido
 
 #LÓGICA DE PAGAMENTO
-def gerar_pagamento(pedido, request) -> str:
-    import mercadopago
-    import os
-
-    #DEBUG
-    #token = os.getenv('MP_ACCESS_TOKEN')
-    #print('TOKEN LIDO:', token)
-
-    sdk = mercadopago.SDK(os.getenv('MP_ACCESS_TOKEN'))
-
-    base_url = request.build_absolute_uri('/').rstrip('/')
-
+def _montar_itens_pagamento(pedido) -> list:
     items = []
     for item_pedido in pedido.itens.all():
         items.append({
@@ -75,22 +66,25 @@ def gerar_pagamento(pedido, request) -> str:
             'unit_price': float(item_pedido.preco_unitario),
             'currency_id': 'BRL',
         })
+    return items
 
-    preference_data = {
-        'items': items,
+
+def _montar_preference_data(pedido, base_url: str) -> dict:
+    return {
+        'items': _montar_itens_pagamento(pedido),
         'external_reference': str(pedido.id),
         'back_urls': {
-            # URLs para onde o cliente é redirecionado após o pagamento
             'success': f'{base_url}/cardapio/pagamento/sucesso/',
             'failure': f'{base_url}/cardapio/pagamento/falha/',
             'pending': f'{base_url}/cardapio/pagamento/pendente/',
         },
     }
 
+
+def gerar_pagamento(pedido, request) -> str:
+    sdk = mercadopago.SDK(os.getenv('MP_ACCESS_TOKEN'))
+    base_url = request.build_absolute_uri('/').rstrip('/')
+    preference_data = _montar_preference_data(pedido, base_url)
     result = sdk.preference().create(preference_data)
     preference = result['response']
-
-    #DEBUG
-    #print('RESPOSTA MERCADO PAGO:', result)
-
     return preference.get('sandbox_init_point') or preference.get('init_point')

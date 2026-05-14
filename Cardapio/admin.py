@@ -3,6 +3,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from django.urls import path
 from .models import Restaurante, ItemCardapio, Pedido, ItemPedido
+from datetime import timedelta
 
 MINUTOS_ATE_SUMIR = 1
 
@@ -58,15 +59,6 @@ class PedidoAdmin(admin.ModelAdmin):
             return '🎉 Entregar na mesa'
         return '⏳ Aguardando pagamento'
 
-    def _proxima_acao_texto(self, pedido):
-        """Versão sem decorator para uso interno no JSON."""
-        if pedido.status == Pedido.Status.PAGO:
-            return '👨‍🍳 Iniciar preparo'
-        elif pedido.status == Pedido.Status.EM_PREPARO:
-            return '✅ Marcar como pronto'
-        elif pedido.status == Pedido.Status.PRONTO:
-            return '🎉 Entregar na mesa'
-        return '⏳ Aguardando pagamento'
 
     @admin.action(description='Marcar selecionados como Em Preparo')
     def marcar_em_preparo(self, request, queryset):
@@ -91,25 +83,21 @@ class PedidoAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def pedidos_ativos_json(self, request):
-        limite = timezone.now() - timezone.timedelta(minutes=MINUTOS_ATE_SUMIR)
+        HORAS_ATE_ARQUIVAR = 24
+        limite_arquivar = timezone.now() - timedelta(hours=HORAS_ATE_ARQUIVAR)
 
         pedidos = Pedido.objects.exclude(
-            status=Pedido.Status.AGUARDANDO_PAGAMENTO
+            status=Pedido.Status.PRONTO,
+            pronto_em__lt=limite_arquivar
         ).order_by('criado_em')
 
-        from datetime import timedelta
-        limite_antigo = timezone.now() - timedelta(hours=24)
-        pedidos = pedidos.exclude(
-            status=Pedido.Status.PRONTO,
-            pronto_em__lt=limite_antigo
-        )
         dados = []
         for pedido in pedidos:
             segundos_restantes = None
             if pedido.status == Pedido.Status.PRONTO and pedido.pronto_em:
-                # Calcula quantos segundos faltam para o pedido sumir
                 segundos_passados = (timezone.now() - pedido.pronto_em).total_seconds()
-                segundos_restantes = max(0, (MINUTOS_ATE_SUMIR * 60) - segundos_passados)
+                restantes = (MINUTOS_ATE_SUMIR * 60) - segundos_passados
+                segundos_restantes = restantes if restantes > 0 else None
 
             dados.append({
                 'id': pedido.id,
@@ -118,7 +106,7 @@ class PedidoAdmin(admin.ModelAdmin):
                 'status': pedido.get_status_display(),
                 'criado_em': pedido.criado_em.strftime('%H:%M'),
                 'segundos_restantes': segundos_restantes,
-                'proxima_acao': self._proxima_acao_texto(pedido),
+                'proxima_acao': self.proxima_acao(pedido),
                 'url': f'/admin/Cardapio/pedido/{pedido.id}/change/',
             })
 
