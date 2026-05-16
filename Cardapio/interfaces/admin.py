@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.http import JsonResponse
 from django.utils import timezone
 from django.urls import path
-from .models import Restaurante, ItemCardapio, Pedido, ItemPedido
+from Cardapio.domain.models import Restaurante, ItemCardapio, Pedido, ItemPedido
 from datetime import timedelta
 
 MINUTOS_ATE_SUMIR = 1

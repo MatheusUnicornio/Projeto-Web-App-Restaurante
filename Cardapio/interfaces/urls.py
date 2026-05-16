@@ -1,8 +1,9 @@
 from django.urls import path
-from . import view
+from Cardapio.interfaces import view
 
 #Link que vai ser codificado no QR Code de cada mesa.
 urlpatterns = [
+
     path('<int:restaurante_id>/mesa/<int:mesa>/',
          view.cardapio, name='cardapio'),
     path('<int:restaurante_id>/mesa/<int:mesa>/adicionar/<int:item_id>/',
@@ -18,7 +19,7 @@ urlpatterns = [
     path('pagamento/falha/', view.pagamento_falha, name='pagamento_falha'),
     path('pagamento/pendente/', view.pagamento_pendente, name='pagamento_pendente'),
 
-    path('pagamento/webhook/',  view.webhook_pagamento,  name='webhook_pagamento'),
+    path('pagamento/webhook/', view.webhook_pagamento, name='webhook_pagamento'),
 
     path('<int:restaurante_id>/chat/', view.chatbot, name='chatbot'),
 ]

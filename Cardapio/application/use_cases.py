@@ -1,9 +1,9 @@
 from django.db import models
 import mercadopago
 import os
-from .models import Pedido, ItemPedido, ItemCardapio
+from Cardapio.domain.models import Pedido, ItemPedido
 from groq import Groq
-from .models import ItemCardapio
+from Cardapio.domain.models import ItemCardapio
 
 #LÓGICA DO CARRINHO
 def adicionar_item(carrinho: dict, item_id: int, nome: str, preco: float) -> dict:

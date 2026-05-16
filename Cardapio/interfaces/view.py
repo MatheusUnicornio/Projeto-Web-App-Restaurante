@@ -1,8 +1,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
-from .models import Restaurante, ItemCardapio, Pedido
-from . import use_cases
+from Cardapio.domain.models import Restaurante, ItemCardapio, Pedido
+from Cardapio.application import use_cases
 import json
 from django.http import JsonResponse
 

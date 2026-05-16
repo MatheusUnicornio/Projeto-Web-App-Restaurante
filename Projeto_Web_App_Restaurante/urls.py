@@ -8,6 +8,6 @@ from django.views.generic import RedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('cardapio/', include('Cardapio.urls')),
+    path('cardapio/', include('Cardapio.interfaces.urls')),
     path('', RedirectView.as_view(url='/cardapio/1/mesa/1/')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT) #Serve as fotos dos pratos em desenvolvimento
