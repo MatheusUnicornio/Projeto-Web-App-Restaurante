@@ -130,9 +130,9 @@ def chatbot(request, restaurante_id):
             return JsonResponse({'erro': 'Mensagem vazia'}, status=400)
 
         restaurante = get_object_or_404(Restaurante, pk=restaurante_id, ativo=True)
-        resposta = use_cases.responder_chatbot(mensagem, restaurante)
+        resultado = use_cases.responder_chatbot(mensagem, restaurante)
 
-        return JsonResponse({'resposta': resposta})
+        return JsonResponse(resultado)
 
     except Exception as e:
         return JsonResponse({'erro': str(e)}, status=500)

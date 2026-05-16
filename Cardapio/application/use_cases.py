@@ -100,7 +100,7 @@ def responder_chatbot(mensagem: str, restaurante) -> str:
     itens = ItemCardapio.objects.filter(restaurante=restaurante, disponivel=True)
 
     cardapio_texto = '\n'.join([
-        f"- {item.nome}: R${item.preco} | {item.descricao} | Restrições: {item.restricoes or 'nenhuma'}"
+        f"- id:{item.id} | {item.nome}: R${item.preco} | {item.descricao} | Restrições: {item.restricoes or 'nenhuma'}"
         for item in itens
     ])
 
@@ -110,6 +110,13 @@ def responder_chatbot(mensagem: str, restaurante) -> str:
 
     Cardápio atual:
     {cardapio_texto}
+
+    IMPORTANTE: Você DEVE responder SOMENTE em formato JSON válido, sem texto fora do JSON.
+    A estrutura deve ser exatamente esta:
+    {{
+        "resposta": "sua mensagem para o cliente aqui",
+        "pratos_recomendados": [id1, id2]
+    }}
 
     Regras:
     - Responda sempre em português
@@ -125,7 +132,23 @@ def responder_chatbot(mensagem: str, restaurante) -> str:
             {'role': 'user', 'content': mensagem},
         ],
         max_tokens=200,
-        temperature=0.7,
+        temperature=0.3,
     )
 
-    return response.choices[0].message.content
+    texto = response.choices[0].message.content.strip()
+
+    try:
+        import json
+        dados = json.loads(texto)
+        # Garante que as chaves obrigatórias existem
+        return {
+            'resposta': dados.get('resposta', 'Não entendi, pode reformular?'),
+            'pratos_recomendados': dados.get('pratos_recomendados', []),
+        }
+    except Exception:
+        # Se a IA não retornar JSON válido, retorna sem recomendação
+        return {
+            'resposta': texto,
+            'pratos_recomendados': [],
+        }
+

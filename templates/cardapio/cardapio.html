@@ -115,6 +115,17 @@
             transform: scale(0.98);
         }
 
+        .item-card.recomendado {
+            border: 2px solid var(--amber);
+            box-shadow: 0 0 20px rgba(232,160,69,0.4);
+            transform: scale(1.01);
+            transition: all 0.3s ease;
+        }
+
+        .item-card.recomendado .item-nome::before {
+            content: '⭐ ';
+        }
+
         @keyframes fadeUp {
             from { opacity: 0; transform: translateY(16px); }
             to   { opacity: 1; transform: translateY(0); }
@@ -341,7 +352,7 @@
     <div class="section-title">Cardápio</div>
     <div class="item-list">
         {% for item in itens %}
-        <div class="item-card">
+        <div class="item-card" data-item-id="{{ item.id }}">
             {% if item.foto %}
                 <img src="{{ item.foto.url }}" class="item-foto" alt="{{ item.nome }}">
             {% else %}
@@ -670,6 +681,17 @@
             msgBot.textContent = data.resposta || data.erro || 'Erro ao obter resposta.';
             messages.appendChild(msgBot);
             messages.scrollTop = messages.scrollHeight;
+
+            limparDestaques();
+            if (data.pratos_recomendados && data.pratos_recomendados.length > 0) {
+                data.pratos_recomendados.forEach(id => destacarPrato(id));
+
+                const msgInfo = document.createElement('div');
+                msgInfo.className = 'msg msg-bot';
+                msgInfo.textContent = '⬆️ Os pratos recomendados estão destacados no cardápio!';
+                messages.appendChild(msgInfo);
+                messages.scrollTop = messages.scrollHeight;
+            }
         })
         .catch(() => {
             document.getElementById('typing')?.remove();
@@ -677,6 +699,20 @@
             msgErr.className = 'msg msg-bot';
             msgErr.textContent = 'Erro de conexão. Tente novamente.';
             messages.appendChild(msgErr);
+        });
+    }
+
+    function destacarPrato(itemId) {
+        const card = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (card) {
+            card.classList.add('recomendado');
+            card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    function limparDestaques() {
+        document.querySelectorAll('.item-card.recomendado').forEach(card => {
+            card.classList.remove('recomendado');
         });
     }
 </script>
