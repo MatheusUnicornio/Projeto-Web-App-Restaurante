@@ -1,9 +1,9 @@
 from django.test import TestCase, Client
 from unittest.mock import patch, MagicMock
-from .application import use_cases
+from Cardapio.application import use_cases
 from Cardapio.domain.models import Restaurante, Pedido, ItemCardapio, ItemPedido
 from django.contrib.admin.sites import AdminSite
-from Cardapio.interfaces.admin import PedidoAdmin
+from Cardapio.admin import PedidoAdmin
 from django.urls import reverse
 
 # Create your tests here.
